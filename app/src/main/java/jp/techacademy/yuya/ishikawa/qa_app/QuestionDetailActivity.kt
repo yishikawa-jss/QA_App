@@ -1,8 +1,10 @@
 package jp.techacademy.yuya.ishikawa.qa_app
 
 import android.content.Intent
+import android.content.SearchRecentSuggestionsProvider
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import com.google.firebase.auth.FirebaseAuth
@@ -60,12 +62,11 @@ class QuestionDetailActivity : AppCompatActivity() {
 
     private val mFavEventListener = object : ChildEventListener {
         override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
-            val map = dataSnapshot.value as Map<*, *>
 
-            val answerUid = dataSnapshot.key ?: ""
+            Log.d("kotlintest", dataSnapshot.value as String)
 
 
-            val fav = map["qid"] as? String ?: ""
+            val fav = dataSnapshot.value as? String ?: ""
 
             if (fav == mQuestion.questionUid) {
                 isFav = true
@@ -79,11 +80,10 @@ class QuestionDetailActivity : AppCompatActivity() {
         }
 
         override fun onChildRemoved(dataSnapshot: DataSnapshot) {
-            val map = dataSnapshot.value as Map<*, *>
 
-            val answerUid = dataSnapshot.key ?: ""
+            Log.d("kotlintest", dataSnapshot.value as String)
 
-            val fav = map["qid"] as? String ?: ""
+            val fav = dataSnapshot.value as? String ?: ""
 
             if (fav == mQuestion.questionUid) {
                 isFav = false
@@ -165,7 +165,8 @@ class QuestionDetailActivity : AppCompatActivity() {
                 }
             } else {
                 if (auth != null) {
-                    dataBaseReference.child(FavoritesPATH).child(auth.uid).setValue(mQuestion.questionUid)
+                    data["qid"] = mQuestion.questionUid
+                    dataBaseReference.child(FavoritesPATH).child(auth.uid).child(mQuestion.questionUid).setValue(mQuestion.questionUid)
                 }
             }
 

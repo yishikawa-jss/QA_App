@@ -3,6 +3,7 @@ package jp.techacademy.yuya.ishikawa.qa_app
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
+import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import android.view.Menu
 import android.view.MenuItem
@@ -14,8 +15,11 @@ import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.*
 // findViewById()を呼び出さずに該当Viewを取得するために必要となるインポート宣言
 import kotlinx.android.synthetic.main.activity_main.*
+import kotlinx.android.synthetic.main.activity_question_detail.*
 import kotlinx.android.synthetic.main.app_bar_main.*
+import kotlinx.android.synthetic.main.app_bar_main.fab
 import kotlinx.android.synthetic.main.content_main.*
+import kotlinx.android.synthetic.main.content_main.listView
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
@@ -27,6 +31,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private lateinit var mAdapter: QuestionsListAdapter
 
     private var mGenreRef: DatabaseReference? = null
+    private lateinit var mFavorite: DatabaseReference
+
+    private var mFavArrayList = mutableListOf<String>()
 
     private val mEventListener = object : ChildEventListener {
         override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
@@ -100,6 +107,163 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
     // --- ここまで追加する ---
+
+
+    private val mFavQuestionEventListener = object : ChildEventListener {
+        override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
+
+            Log.d("kotlintest", mFavArrayList.toString())
+            Log.d("kotlintest-snap", dataSnapshot.children.toString())
+
+            var childrenList = dataSnapshot.children
+
+            for (i in childrenList) {
+                Log.d("kotlintest-snap", i.key.toString())
+
+                if (mFavArrayList.contains(i.key.toString())) {
+
+                    Log.d("kotlintest", "DONE!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+                    val map = i.value as Map<String, String>
+                    val title = map["title"] ?: ""
+                    val body = map["body"] ?: ""
+                    val name = map["name"] ?: ""
+                    val uid = map["uid"] ?: ""
+                    val imageString = map["image"] ?: ""
+                    val bytes =
+                        if (imageString.isNotEmpty()) {
+                            Base64.decode(imageString, Base64.DEFAULT)
+                        } else {
+                            byteArrayOf()
+                        }
+
+                    val answerArrayList = ArrayList<Answer>()
+                    val answerMap = map["answers"] as Map<String, String>?
+                    if (answerMap != null) {
+                        for (key in answerMap.keys) {
+                            val temp = answerMap[key] as Map<String, String>
+                            val answerBody = temp["body"] ?: ""
+                            val answerName = temp["name"] ?: ""
+                            val answerUid = temp["uid"] ?: ""
+                            val answer = Answer(answerBody, answerName, answerUid, key)
+                            answerArrayList.add(answer)
+                        }
+                    }
+
+                    val question = Question(title, body, name, uid, i.key ?: "",
+                        mGenre, bytes, answerArrayList)
+                    mQuestionArrayList.add(question)
+                    mAdapter.notifyDataSetChanged()
+                }
+            }
+
+
+
+
+
+
+        }
+
+        override fun onChildChanged(dataSnapshot: DataSnapshot, s: String?) {
+
+            var childrenList = dataSnapshot.children
+
+            for (i in childrenList) {
+                Log.d("kotlintest-snap", i.key.toString())
+
+                if (mFavArrayList.contains(i.key)) {
+
+                    val map = i.value as Map<String, String>
+
+                    // 変更があったQuestionを探す
+                    for (question in mQuestionArrayList) {
+                        if (i.key.equals(question.questionUid)) {
+                            // このアプリで変更がある可能性があるのは回答（Answer)のみ
+                            question.answers.clear()
+                            val answerMap = map["answers"] as Map<String, String>?
+                            if (answerMap != null) {
+                                for (key in answerMap.keys) {
+                                    val temp = answerMap[key] as Map<String, String>
+                                    val answerBody = temp["body"] ?: ""
+                                    val answerName = temp["name"] ?: ""
+                                    val answerUid = temp["uid"] ?: ""
+                                    val answer = Answer(answerBody, answerName, answerUid, key)
+                                    question.answers.add(answer)
+                                }
+                            }
+
+                            mAdapter.notifyDataSetChanged()
+                        }
+                    }
+                }
+
+
+            }
+
+
+
+
+
+
+
+
+            }
+
+
+        override fun onChildRemoved(p0: DataSnapshot) {
+
+        }
+
+        override fun onChildMoved(p0: DataSnapshot, p1: String?) {
+
+        }
+
+        override fun onCancelled(p0: DatabaseError) {
+
+        }
+    }
+
+
+    private val mFavEventListener = object : ChildEventListener {
+        override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
+
+            Log.d("kotlintest", dataSnapshot.value as String)
+
+
+            val fav = dataSnapshot.value as? String ?: ""
+
+            if (mFavArrayList.contains(fav) == false) {
+                mFavArrayList.add(fav)
+            }
+
+
+        }
+
+        override fun onChildChanged(dataSnapshot: DataSnapshot, s: String?) {
+
+        }
+
+        override fun onChildRemoved(dataSnapshot: DataSnapshot) {
+
+            Log.d("kotlintest", dataSnapshot.value as String)
+
+            val fav = dataSnapshot.value as? String ?: ""
+
+            if (mFavArrayList.contains(fav)) {
+                mFavArrayList.remove(fav)
+            }
+
+        }
+
+        override fun onChildMoved(dataSnapshot: DataSnapshot, s: String?) {
+
+        }
+
+        override fun onCancelled(databaseError: DatabaseError) {
+
+        }
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -196,10 +360,22 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         } else if (id == R.id.nav_compter) {
             toolbar.title = getString(R.string.menu_compter_label)
             mGenre = 4
+        } else if (id == R.id.nav_favorite) {
+            toolbar.title = "お気に入り"
+            mGenre = 0
         }
 
         drawer_layout.closeDrawer(GravityCompat.START)
 
+        if (mGenre != 0) {
+            return refreshGenre()
+        } else {
+            return refreshFav()
+        }
+
+    }
+
+    private fun refreshGenre(): Boolean {
         // --- ここから ---
         // 質問のリストをクリアしてから再度Adapterにセットし、AdapterをListViewにセットし直す
         mQuestionArrayList.clear()
@@ -209,6 +385,7 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         // 選択したジャンルにリスナーを登録する
         if (mGenreRef != null) {
             mGenreRef!!.removeEventListener(mEventListener)
+
         }
         mGenreRef = mDatabaseReference.child(ContentsPATH).child(mGenre.toString())
         mGenreRef!!.addChildEventListener(mEventListener)
@@ -216,5 +393,31 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         return true
         // --- ここまで追加する ---
     }
+
+    private fun refreshFav(): Boolean {
+        mQuestionArrayList.clear()
+        mAdapter.setQuestionArrayList(mQuestionArrayList)
+        listView.adapter = mAdapter
+
+        val auth = FirebaseAuth.getInstance().currentUser
+        if (auth != null) {
+            mFavorite = FirebaseDatabase.getInstance().reference.child(FavoritesPATH).child(auth.uid)
+            mFavorite.addChildEventListener(mFavEventListener)
+        }
+
+        // 選択したジャンルにリスナーを登録する
+        if (mGenreRef != null) {
+            mGenreRef!!.removeEventListener(mEventListener)
+        }
+        mGenreRef = mDatabaseReference.child(ContentsPATH)
+        mGenreRef!!.addChildEventListener(mFavQuestionEventListener)
+
+
+
+
+
+        return true
+    }
+
 
 }
