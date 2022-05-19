@@ -2,6 +2,7 @@ package jp.techacademy.yuya.ishikawa.qa_app
 
 import android.content.Intent
 import android.os.Bundle
+import android.os.Handler
 import android.util.Base64
 import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
@@ -20,6 +21,7 @@ import kotlinx.android.synthetic.main.app_bar_main.*
 import kotlinx.android.synthetic.main.app_bar_main.fab
 import kotlinx.android.synthetic.main.content_main.*
 import kotlinx.android.synthetic.main.content_main.listView
+import kotlinx.coroutines.delay
 
 class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelectedListener {
 
@@ -112,13 +114,12 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     private val mFavQuestionEventListener = object : ChildEventListener {
         override fun onChildAdded(dataSnapshot: DataSnapshot, s: String?) {
 
-            Log.d("kotlintest", mFavArrayList.toString())
-            Log.d("kotlintest-snap", dataSnapshot.children.toString())
+            Log.d("kotlintest-fav-add", mFavArrayList.toString())
 
             var childrenList = dataSnapshot.children
 
             for (i in childrenList) {
-                Log.d("kotlintest-snap", i.key.toString())
+                Log.d("kotlintest-snap-add", i.key.toString())
 
                 if (mFavArrayList.contains(i.key.toString())) {
 
@@ -162,14 +163,16 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
 
 
+
         }
 
         override fun onChildChanged(dataSnapshot: DataSnapshot, s: String?) {
-
+            Log.d("kotlintest-fav-cha", mFavArrayList.toString())
             var childrenList = dataSnapshot.children
 
             for (i in childrenList) {
-                Log.d("kotlintest-snap", i.key.toString())
+
+                Log.d("kotlintest-snap-cha", i.key.toString())
 
                 if (mFavArrayList.contains(i.key)) {
 
@@ -264,6 +267,14 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         }
     }
 
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        mGenre = 1
+        refreshGenre()
+        onNavigationItemSelected(nav_view.menu.getItem(0).setChecked(true))
+
+    }
+
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -286,7 +297,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             if (user == null) {
                 // ログインしていなければログイン画面に遷移させる
                 val intent = Intent(applicationContext, LoginActivity::class.java)
-                startActivity(intent)
+
+                startActivityForResult(intent, 1)
             } else {
                 // ジャンルを渡して質問作成画面を起動する
                 val intent = Intent(applicationContext, QuestionSendActivity::class.java)
@@ -338,7 +350,9 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
 
         if (id == R.id.action_settings) {
             val intent = Intent(applicationContext, SettingActivity::class.java)
-            startActivity(intent)
+
+
+            startActivityForResult(intent, 1)
             return true
         }
 
@@ -362,18 +376,21 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
             mGenre = 4
         } else if (id == R.id.nav_favorite) {
             toolbar.title = "お気に入り"
-            mGenre = 0
+            mGenre = 5
         }
 
         drawer_layout.closeDrawer(GravityCompat.START)
 
-        if (mGenre != 0) {
-            return refreshGenre()
+        if (mGenre != 5) {
+            refreshGenre()
         } else {
-            return refreshFav()
+            refreshFav()
         }
 
+        return true
+
     }
+
 
     private fun refreshGenre(): Boolean {
         // --- ここから ---
@@ -390,30 +407,34 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         mGenreRef = mDatabaseReference.child(ContentsPATH).child(mGenre.toString())
         mGenreRef!!.addChildEventListener(mEventListener)
 
+        mAdapter.notifyDataSetChanged()
+
         return true
         // --- ここまで追加する ---
     }
 
     private fun refreshFav(): Boolean {
         mQuestionArrayList.clear()
+        mFavArrayList.clear()
         mAdapter.setQuestionArrayList(mQuestionArrayList)
         listView.adapter = mAdapter
 
         val auth = FirebaseAuth.getInstance().currentUser
+
         if (auth != null) {
             mFavorite = FirebaseDatabase.getInstance().reference.child(FavoritesPATH).child(auth.uid)
+            mFavorite.removeEventListener(mFavEventListener)
             mFavorite.addChildEventListener(mFavEventListener)
         }
 
-        // 選択したジャンルにリスナーを登録する
-        if (mGenreRef != null) {
-            mGenreRef!!.removeEventListener(mEventListener)
-        }
-        mGenreRef = mDatabaseReference.child(ContentsPATH)
-        mGenreRef!!.addChildEventListener(mFavQuestionEventListener)
-
-
-
+        Handler().postDelayed( {
+            // 選択したジャンルにリスナーを登録する
+            if (mGenreRef != null) {
+                mGenreRef!!.removeEventListener(mEventListener)
+            }
+            mGenreRef = mDatabaseReference.child(ContentsPATH)
+            mGenreRef!!.addChildEventListener(mFavQuestionEventListener)
+        }, 200)
 
 
         return true

@@ -68,6 +68,8 @@ class LoginActivity : AppCompatActivity() {
 
                     // 表示名をPreferenceに保存する
                     saveName(name)
+
+
                 } else {
                     userRef.addListenerForSingleValueEvent(object : ValueEventListener {
                         override fun onDataChange(snapshot: DataSnapshot) {
@@ -82,6 +84,8 @@ class LoginActivity : AppCompatActivity() {
                 // プログレスバーを非表示にする
                 progressBar.visibility = View.GONE
 
+
+                setResult(1)
                 // Activityを閉じる
                 finish()
 
