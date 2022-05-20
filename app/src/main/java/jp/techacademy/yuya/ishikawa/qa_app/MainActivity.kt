@@ -270,10 +270,23 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         mGenre = 1
+        favVisible()
         refreshGenre()
         onNavigationItemSelected(nav_view.menu.getItem(0).setChecked(true))
 
     }
+
+    private fun favVisible() {
+        val user = FirebaseAuth.getInstance().currentUser
+
+        if (user == null) {
+            nav_view.menu.getItem(4).isVisible = false
+        } else {
+            nav_view.menu.getItem(4).isVisible = true
+        }
+
+    }
+
 
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -313,6 +326,8 @@ class MainActivity : AppCompatActivity(), NavigationView.OnNavigationItemSelecte
         toggle.syncState()
 
         nav_view.setNavigationItemSelectedListener(this)
+
+        favVisible()
 
         // Firebase
         mDatabaseReference = FirebaseDatabase.getInstance().reference
